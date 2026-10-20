@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/golang-jwt/jwt/v5"
-
+	"golang.org/x/crypto/bcrypt"
 	//gorm
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -57,11 +56,32 @@ func (s *Server) waveHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
+			return jwtSecret, nil
+		})
+		if err != nil {
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			return
+		}
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		userID := int64(claims["user_id"].(float64))
+
 		query := ` insert into waves (user_id, content)
 			values ($1, $2)
 			returning id, created_at, is_archive; `
 
-		err = s.db.QueryRow(query, 1, newWave.Content).Scan(&newWave.ID, &newWave.CreatedAt, &newWave.IsArchive)
+		err = s.db.QueryRow(query, userID, newWave.Content).Scan(&newWave.ID, &newWave.CreatedAt, &newWave.IsArchive)
 
 		if err != nil {
 			fmt.Println("Database Error: ", err)
