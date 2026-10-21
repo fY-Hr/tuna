@@ -19,11 +19,6 @@ func (s *Server) waveHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// myWave := Wave{
-		// 	ID:        1,
-		// 	Content:   "Caught my first tuna",
-		// 	CreatedAt: time.Now(),
-		// }
 		query := ` select id, content, created_at, is_archive
 	 				from waves order by id desc;`
 		rows, err := s.db.Query(query)

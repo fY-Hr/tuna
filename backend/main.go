@@ -4,13 +4,18 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
+
 	//gorm
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
-	dsnString := "postgres://aeon:tunapassword@localhost:5432/tuna?sslmode=disable"
-	db, err := sql.Open("pgx", dsnString)
+	dsnString := os.Getenv("DATABASE_URL")
+	if dsnString == "" {
+		dsnString = "postgres://aeon:tunapassword@localhost:5432/tuna?sslmode=disable"
+		db, err := sql.Open("pgx", dsnString)
+	}
 	if err != nil {
 		fmt.Println("Invalid request", err)
 		return
