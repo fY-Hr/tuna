@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
 	//gorm
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -13,9 +16,9 @@ import (
 func main() {
 	dsnString := os.Getenv("DATABASE_URL")
 	if dsnString == "" {
-		dsnString = "postgres://aeon:tunapassword@localhost:5432/tuna?sslmode=disable"
-		db, err := sql.Open("pgx", dsnString)
+		dsnString = "postgres://postgre:postgre@localhost:5432/tuna?sslmode=disable"
 	}
+	db, err := sql.Open("pgx", dsnString)
 	if err != nil {
 		fmt.Println("Invalid request", err)
 		return
@@ -28,11 +31,17 @@ func main() {
 	fmt.Println("Connected successfully")
 
 	server := &Server{db: db}
-	http.HandleFunc("/api/auth/register", server.registerHandler)
-	http.HandleFunc("/api/auth/login", server.loginHandler)
+	r := chi.NewRouter()
+
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	r.Get("/api/waves", server.getWavesHandler)
+	r.Post("/api/waves", server.createWavesHandler)
+	r.Post("/api/auth/register", server.registerHandler)
+	r.Post("/api/auth/login", server.loginHandler)
 	defer db.Close()
 
 	fmt.Println("Tuna server starting")
-	http.HandleFunc("/api/waves", server.waveHandler)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8080", r)
 }
