@@ -1,4 +1,4 @@
-package main
+package Handlers
 
 import (
 	"database/sql"
@@ -12,7 +12,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func (s *Server) getWavesByIDHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) GetWavesByIDHandler(w http.ResponseWriter, r *http.Request) {
 	var wave Wave
 	var userID int64
 
@@ -40,7 +40,7 @@ func (s *Server) getWavesByIDHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(wave)
 }
-func (s *Server) getWavesHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) GetWavesHandler(w http.ResponseWriter, r *http.Request) {
 	query := ` select id, content, created_at, is_archive
 	 				from waves order by id desc;`
 
@@ -68,7 +68,7 @@ func (s *Server) getWavesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(waves)
 }
 
-func (s *Server) createWavesHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) CreateWavesHandler(w http.ResponseWriter, r *http.Request) {
 	var newWave Wave
 	err := json.NewDecoder(r.Body).Decode(&newWave)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *Server) createWavesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(newWave)
 }
 
-func (s *Server) deleteWaveHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) DeleteWaveHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -121,7 +121,7 @@ func (s *Server) deleteWaveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
-func (s *Server) reactWaveHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
