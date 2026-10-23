@@ -3,20 +3,32 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
 
 	//gorm
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
+	_ = godotenv.Load()
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	dsnString := os.Getenv("DATABASE_URL")
 	if dsnString == "" {
-		dsnString = "postgres://aeon:tunapassword@localhost:5432/tuna?sslmode=disable"
+		log.Fatal("ERROR, Please provide DATABASE_URL environment variable")
+		return
+	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("ERROR, Please provide JWT_SECRET environment variable")
+		return
 	}
 	db, err := sql.Open("pgx", dsnString)
 	if err != nil {
@@ -30,24 +42,11 @@ func main() {
 	}
 	fmt.Println("Connected successfully")
 
-	server := &Server{db: db}
-	r := chi.NewRouter()
-
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	r.Get("/api/waves", server.getWavesHandler)
-	r.Get("/api/waves/{id}", server.getWavesByIDHandler)
-	r.Post("/api/auth/register", server.registerHandler)
-	r.Post("/api/auth/login", server.loginHandler)
-
-	r.Group(func(r chi.Router) {
-		r.Use(server.authMiddleware)
-		r.Post("/api/waves", server.createWavesHandler)
-		r.Delete("/api/waves/{id}", server.deleteWaveHandler)
-	})
+	server := &Server{db: db, jwtSecret: []byte(jwtSecret)}
 	defer db.Close()
 
 	fmt.Println("Tuna server starting")
-	http.ListenAndServe(":8080", r)
+	if err := http.ListenAndServe(":"+port, server.routes()); err != nil {
+		log.Fatal(err)
+	}
 }

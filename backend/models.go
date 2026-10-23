@@ -6,7 +6,8 @@ import (
 )
 
 type Server struct {
-	db *sql.DB
+	db        *sql.DB
+	jwtSecret []byte
 }
 
 type Wave struct {
@@ -20,4 +21,8 @@ type RegisterRequest struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type Reaction struct {
+	Value int16 `json:"value"`
 }
