@@ -3,6 +3,7 @@ import { defineConfig, lazyPlugins } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 import adapter from "@sveltejs/adapter-auto";
 import { sveltekit } from "@sveltejs/kit/vite";
+import { enhancedImages } from "@sveltejs/enhanced-img";
 
 export default defineConfig({
   fmt: {},
@@ -13,6 +14,7 @@ export default defineConfig({
   },
   plugins: lazyPlugins(() => [
     tailwindcss(),
+    enhancedImages(),
     sveltekit({
       compilerOptions: {
         // Force runes mode for the project, except for libraries. Can be removed in svelte 6.
