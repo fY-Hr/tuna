@@ -1,14 +1,8 @@
-package main
+package Handlers
 
 import (
-	"database/sql"
 	"time"
 )
-
-type Server struct {
-	db        *sql.DB
-	jwtSecret []byte
-}
 
 type Wave struct {
 	ID        int64     `json:"id"`

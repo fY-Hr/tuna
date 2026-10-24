@@ -1,5 +1,4 @@
 module github.com/fY-Hr/tuna/backend
-
 go 1.26.7
 
 require (

@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/fY-Hr/tuna/backend/Handlers"
 	"github.com/joho/godotenv"
+)
 
+import (
 	//gorm
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -42,11 +45,11 @@ func main() {
 	}
 	fmt.Println("Connected successfully")
 
-	server := &Server{db: db, jwtSecret: []byte(jwtSecret)}
+	server := Handlers.NewServer(db, []byte(jwtSecret))
 	defer db.Close()
 
 	fmt.Println("Tuna server starting")
-	if err := http.ListenAndServe(":"+port, server.routes()); err != nil {
+	if err := http.ListenAndServe(":"+port, setupRoutes(server)); err != nil {
 		log.Fatal(err)
 	}
 }

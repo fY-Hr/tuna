@@ -1,4 +1,4 @@
-package main
+package Handlers
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -61,7 +61,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

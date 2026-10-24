@@ -1,4 +1,4 @@
-package main
+package Handlers
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func (s *Server) authMiddleware(next http.Handler) http.Handler {
+func (s *Server) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 1. Read Authorization header
 		authHeader := r.Header.Get("Authorization")
