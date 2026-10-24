@@ -4,88 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	//gorm
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
-
-var jwtSecret = []byte("super_secret_tuna_key_replace_later")
-
-func (s *Server) getWavesHandler(w http.ResponseWriter, r *http.Request) {
-	query := ` select id, content, created_at, is_archive
-	 				from waves order by id desc;`
-
-	rows, err := s.db.Query(query)
-
-	if err != nil {
-		http.Error(w, "Failed", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-	waves := []Wave{}
-
-	for rows.Next() {
-		var a Wave
-		err := rows.Scan(&a.ID, &a.Content, &a.CreatedAt, &a.IsArchive)
-		if err != nil {
-			http.Error(w, "Failed", http.StatusInternalServerError)
-			return
-		}
-		waves = append(waves, a)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(waves)
-}
-
-func (s *Server) createWavesHandler(w http.ResponseWriter, r *http.Request) {
-	var newWave Wave
-	err := json.NewDecoder(r.Body).Decode(&newWave)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
-		return jwtSecret, nil
-	})
-	if err != nil {
-		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
-		return
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	userID := int64(claims["user_id"].(float64))
-
-	query := ` insert into waves (user_id, content)
-			values ($1, $2)
-			returning id, created_at, is_archive; `
-
-	err = s.db.QueryRow(query, userID, newWave.Content).Scan(&newWave.ID, &newWave.CreatedAt, &newWave.IsArchive)
-
-	if err != nil {
-		fmt.Println("Database Error: ", err)
-		http.Error(w, "Failed to save wave", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(newWave)
-}
 
 func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -167,7 +90,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtSecret)
+	tokenString, err := token.SignedString(s.jwtSecret)
 
 	if err != nil {
 		http.Error(w, "", http.StatusUnauthorized)
