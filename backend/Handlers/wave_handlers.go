@@ -141,6 +141,19 @@ func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// verify the wave exists before upserting, so FK violations don't become 500s
+	var waveExists bool
+	err = s.db.QueryRow(`select exists(select 1 from waves where id = $1)`, waveID).Scan(&waveExists)
+	if err != nil {
+		fmt.Println("Database Error: ", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if !waveExists {
+		http.Error(w, "Wave not found", http.StatusNotFound)
+		return
+	}
+
 	if req.Value == 0 {
 		query := ` delete from wave_reactions where user_id = $1 and wave_id = $2;`
 		_, err = s.db.Exec(query, userID, waveID)

@@ -32,7 +32,7 @@ create table if not exists waves(
 
 create table if not exists wave_reactions(
     user_id bigint not null references users(id) on delete cascade,
-    wave_id bigint not null references wave(id) on delete cascade,
+    wave_id bigint not null references waves(id) on delete cascade,
     value smallint not null check (value IN(1, -1)),
     created_at timestamptz default now() not null,
     updated_at timestamptz default now() not null,
