@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load()
+	_ = godotenv.Overload()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

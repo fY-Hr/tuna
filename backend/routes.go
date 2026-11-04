@@ -18,6 +18,7 @@ func setupRoutes(s *Handlers.Server) http.Handler {
 	r.Get("/api/waves/{id}", s.GetWavesByIDHandler)
 	r.Post("/api/auth/register", s.RegisterHandler)
 	r.Post("/api/auth/login", s.LoginHandler)
+	r.Post("/api/auth/refresh", s.RefreshHandler)
 
 	r.Group(func(r chi.Router) {
 		r.Use(s.AuthMiddleware)

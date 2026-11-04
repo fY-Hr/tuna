@@ -76,7 +76,7 @@ func (s *Server) CreateWavesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Context().Value("userID").(int64)
+	userID := r.Context().Value(userIDKey).(int64)
 
 	query := ` insert into waves (user_id, content)
 			values ($1, $2)
@@ -101,7 +101,7 @@ func (s *Server) DeleteWaveHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
 		return
 	}
-	userID := r.Context().Value("userID").(int64)
+	userID := r.Context().Value(userIDKey).(int64)
 
 	query := `DELETE FROM waves WHERE id = $1 AND user_id = $2;`
 	res, err := s.db.Exec(query, waveID, userID)
@@ -128,7 +128,7 @@ func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
 		return
 	}
-	userID := r.Context().Value("userID").(int64)
+	userID := r.Context().Value(userIDKey).(int64)
 
 	var req Reaction
 	err = json.NewDecoder(r.Body).Decode(&req)
