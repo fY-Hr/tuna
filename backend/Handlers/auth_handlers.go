@@ -10,12 +10,21 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// Usernames that collide with reserved URL segments. chi prefers static
+// segments over params, so a user named "me" would make their public
+// profile at /api/users/{username} permanently unreachable (the authed
+// /api/users/me route always wins) — reserve these at registration.
+var reservedUsernames = map[string]bool{
+	"me": true,
+}
 
 // Access tokens are short-lived JWTs; refresh tokens are opaque,
 // stored hashed, and single-use (rotated on every refresh).
@@ -91,6 +100,11 @@ func (s *Server) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if req.Username == "" || req.Password == "" || req.Email == "" {
 		http.Error(w, "Username, email, and password are required", http.StatusBadRequest)
+		return
+	}
+
+	if reservedUsernames[strings.ToLower(req.Username)] {
+		http.Error(w, "That username is reserved", http.StatusConflict)
 		return
 	}
 
