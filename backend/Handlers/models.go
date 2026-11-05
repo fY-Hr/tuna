@@ -21,6 +21,18 @@ type Reaction struct {
 	Value int16 `json:"value"`
 }
 
+// ReactionCounts is the aggregate view of a wave's reactions.
+type ReactionCounts struct {
+	Up   int64 `json:"up"`
+	Down int64 `json:"down"`
+}
+
+// MyReaction is the calling user's own reaction on a wave; 0 means no
+// reaction, matching what POST /react accepts to clear one.
+type MyReaction struct {
+	Value int16 `json:"value"`
+}
+
 // Profile is the public view of a user — safe to show to anyone.
 type Profile struct {
 	ID        int64     `json:"id"`

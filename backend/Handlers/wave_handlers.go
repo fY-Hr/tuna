@@ -178,3 +178,72 @@ func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 
 }
+
+// GetWaveReactionsHandler returns a wave's reaction counts. Public:
+// the counts are aggregates and reveal nothing about individual users.
+func (s *Server) GetWaveReactionsHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	waveID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
+		return
+	}
+
+	var waveExists bool
+	err = s.db.QueryRow(`select exists(select 1 from waves where id = $1)`, waveID).Scan(&waveExists)
+	if err != nil {
+		fmt.Println("Database error: ", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if !waveExists {
+		http.Error(w, "Wave not found", http.StatusNotFound)
+		return
+	}
+
+	var counts ReactionCounts
+	query := `select
+	        coalesce(sum(value) filter (where value = 1), 0),
+	        coalesce(sum(value) filter (where value = -1), 0)
+	    from wave_reactions where wave_id = $1;`
+	err = s.db.QueryRow(query, waveID).Scan(&counts.Up, &counts.Down)
+	if err != nil {
+		fmt.Println("Database error: ", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(counts)
+}
+
+// GetMyReactionHandler returns the calling user's own reaction on a
+// wave. Having none is a normal state, not a 404 — value 0 means "no
+// reaction", matching what POST /react accepts to clear one.
+func (s *Server) GetMyReactionHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	waveID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
+		return
+	}
+	userID := r.Context().Value(userIDKey).(int64)
+
+	var my MyReaction
+	query := `select value from wave_reactions where user_id = $1 and wave_id = $2;`
+	err = s.db.QueryRow(query, userID, waveID).Scan(&my.Value)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			my.Value = 0
+		} else {
+			fmt.Println("Database error: ", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(my)
+}

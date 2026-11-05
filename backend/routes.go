@@ -16,6 +16,7 @@ func setupRoutes(s *Handlers.Server) http.Handler {
 
 	r.Get("/api/waves", s.GetWavesHandler)
 	r.Get("/api/waves/{id}", s.GetWavesByIDHandler)
+	r.Get("/api/waves/{id}/reactions", s.GetWaveReactionsHandler)
 	r.Get("/api/users/{username}", s.GetProfileHandler)
 	r.Post("/api/auth/register", s.RegisterHandler)
 	r.Post("/api/auth/login", s.LoginHandler)
@@ -26,6 +27,7 @@ func setupRoutes(s *Handlers.Server) http.Handler {
 		r.Post("/api/waves", s.CreateWavesHandler)
 		r.Delete("/api/waves/{id}", s.DeleteWaveHandler)
 		r.Post("/api/waves/{id}/react", s.ReactWaveHandler)
+		r.Get("/api/waves/{id}/reactions/me", s.GetMyReactionHandler)
 		// chi prefers static segments over params, so /api/users/me
 		// matches here even though /api/users/{username} is public.
 		r.Get("/api/users/me", s.GetMeHandler)
