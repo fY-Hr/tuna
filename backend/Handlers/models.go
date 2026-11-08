@@ -72,3 +72,13 @@ type Comment struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+type CommentResponse struct {
+	ID        int64     `json:"id"`
+	UserID    int64     `json:"user_id"`
+	WaveID    int64     `json:"wave_id"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	Username  string    `json:"username"`
+	AvatarURL string    `json:"avatar_url"`
+}

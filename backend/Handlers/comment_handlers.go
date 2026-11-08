@@ -60,3 +60,51 @@ func (s *Server) CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(comment)
 }
+
+func (s *Server) GetCommentsByWaveHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	waveID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid Wave ID", http.StatusBadRequest)
+		return
+	}
+
+	var waveExists bool
+	query := `SELECT EXISTS(SELECT 1 FROM waves WHERE id = $1);`
+	err = s.db.QueryRow(query, waveID).Scan(&waveExists)
+	if err != nil {
+		http.Error(w, "Database Failed", http.StatusInternalServerError)
+		return
+	}
+	if !waveExists {
+		http.Error(w, "Wave Doesn't Exist", http.StatusNotFound)
+		return
+	}
+
+	query = `SELECT c.id, c.user_id, c.wave_id, c.content, c.created_at,
+       u.username, COALESCE(u.avatar_url, '')
+FROM comments c
+JOIN users u ON c.user_id = u.id
+WHERE c.wave_id = $1
+ORDER BY c.created_at ASC;`
+
+	rows, err := s.db.Query(query, waveID)
+	if err != nil {
+		http.Error(w, "Database Failed", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	comments := []CommentResponse{}
+	for rows.Next() {
+		var a CommentResponse
+		err = rows.Scan(&a.ID, &a.UserID, &a.WaveID, &a.Content, &a.CreatedAt, &a.Username, &a.AvatarURL)
+		if err != nil {
+			http.Error(w, "Database Failed", http.StatusInternalServerError)
+			return
+		}
+		comments = append(comments, a)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(comments)
+}

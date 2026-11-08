@@ -21,6 +21,7 @@ func setupRoutes(s *Handlers.Server) http.Handler {
 	r.Post("/api/auth/register", s.RegisterHandler)
 	r.Post("/api/auth/login", s.LoginHandler)
 	r.Post("/api/auth/refresh", s.RefreshHandler)
+	r.Get("/api/waves/{id}/comments", s.GetCommentsByWaveHandler)
 
 	r.Group(func(r chi.Router) {
 		r.Use(s.AuthMiddleware)
