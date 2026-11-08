@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	//gorm
+	// gorm
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -40,12 +40,12 @@ func (s *Server) GetWavesByIDHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(wave)
 }
+
 func (s *Server) GetWavesHandler(w http.ResponseWriter, r *http.Request) {
 	query := ` select id, content, created_at, is_archive
 	 				from waves order by id desc;`
 
 	rows, err := s.db.Query(query)
-
 	if err != nil {
 		http.Error(w, "Failed", http.StatusInternalServerError)
 		return
@@ -83,7 +83,6 @@ func (s *Server) CreateWavesHandler(w http.ResponseWriter, r *http.Request) {
 			returning id, created_at, is_archive; `
 
 	err = s.db.QueryRow(query, userID, newWave.Content).Scan(&newWave.ID, &newWave.CreatedAt, &newWave.IsArchive)
-
 	if err != nil {
 		fmt.Println("Database Error: ", err)
 		http.Error(w, "Failed to save wave", http.StatusInternalServerError)
@@ -121,6 +120,7 @@ func (s *Server) DeleteWaveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
 func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
@@ -176,7 +176,6 @@ func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
-
 }
 
 // GetWaveReactionsHandler returns a wave's reaction counts. Public:
@@ -246,4 +245,37 @@ func (s *Server) GetMyReactionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(my)
+}
+
+func (s *Server) ArchiveWaveHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	waveID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid wave id", http.StatusBadRequest)
+		return
+	}
+	userID := r.Context().Value(userIDKey).(int64)
+	query := `UPDATE waves SET is_archive = true, updated_at = NOW() WHERE id = $1 AND user_id = $2;`
+	res, err := s.db.Exec(query, waveID, userID)
+	if err != nil {
+		http.Error(w, "Invalid user", http.StatusInternalServerError)
+		return
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusInternalServerError)
+		return
+	}
+	if rowsAffected == 0 {
+		http.Error(w, "Wave not found or unauthorized", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]any{
+		"message": "Wave archived successfully",
+		"id":      waveID,
+	}
+	json.NewEncoder(w).Encode(response)
 }

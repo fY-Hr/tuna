@@ -32,7 +32,8 @@ func setupRoutes(s *Handlers.Server) http.Handler {
 		// matches here even though /api/users/{username} is public.
 		r.Get("/api/users/me", s.GetMeHandler)
 		r.Patch("/api/users/me", s.UpdateMeHandler)
-	})
+		r.Patch("/api/waves/{id}/archive", s.ArchiveWaveHandler)
+	}
 
 	return r
 }
