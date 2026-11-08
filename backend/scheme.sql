@@ -52,3 +52,19 @@ create table if not exists wave_reactions(
     updated_at timestamptz default now() not null,
     primary key (user_id, wave_id)
 );
+
+create table if not exists comments(
+	id bigint generated always as identity primary key,
+	user_id bigint not null references users(id) on delete cascade,
+	wave_id bigint not null references waves(id) on delete cascade,
+	content text not null,
+	created_at timestamptz default now() not null,
+    updated_at timestamptz default now() not null
+);
+
+create index if not exists idx_comments_wave_id on comments(wave_id);
+
+
+-- sorting the table by wave_id would be really intensive 
+-- so index is very much needed
+
