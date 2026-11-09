@@ -1,10 +1,11 @@
 import { redirect } from "@sveltejs/kit";
+import type { PageServerLoad } from "./$types";
 
-export async function load({ cookies }) {
+export const load: PageServerLoad = async ({ cookies }) => {
   const token = cookies.get("session");
   if (!token) {
-    redirect(302, "/auth/login")
+    redirect(303, "/auth/login");
   } else {
-    redirect(302, "/home")
+    redirect(303, "/home");
   }
-}
+};

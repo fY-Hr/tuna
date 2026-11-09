@@ -28,6 +28,9 @@ export default defineConfig({
       adapter: adapter(),
     }),
   ]),
+  ssr: {
+    noExternal: ["@lucide/svelte"],
+  },
   test: {
     expect: { requireAssertions: true },
     projects: [

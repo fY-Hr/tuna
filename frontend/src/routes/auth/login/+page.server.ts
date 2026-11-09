@@ -1,6 +1,13 @@
 import { API_BASE_URL } from "$app/env/private";
 import { fail, redirect } from "@sveltejs/kit";
-import type { Actions } from "./$types";
+import type { Actions, PageServerLoad } from "./$types";
+
+export const load: PageServerLoad = async ({ cookies }) => {
+  const token = cookies.get("session");
+  if (token) {
+    return redirect(303, "/home");
+  }
+};
 
 export const actions = {
   default: async ({ request, cookies }) => {
@@ -9,14 +16,14 @@ export const actions = {
     const password = data.get("password")?.toString();
 
     if (!username || !password) {
-      return fail(400, { missing: true, message: "Username and password required", username });
+      return fail(400, { missing: true, message: "All fields need to be filled out", username });
     }
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password }),
       });
 
       if (!res.ok) {
@@ -31,12 +38,12 @@ export const actions = {
         httpOnly: true,
         sameSite: "lax",
         secure: true,
-        maxAge: 60 * 60 * 24 * 7
+        maxAge: 60 * 60 * 24 * 7,
       });
     } catch (err) {
-      return fail(500, { message: "Could not connect to API service" })
+      return fail(500, { message: "Could not connect to API service", error: err });
     }
 
-    redirect(303, "/home")
-  }
+    redirect(303, "/home");
+  },
 } satisfies Actions;
