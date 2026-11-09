@@ -42,7 +42,7 @@
   });
 </script>
 
-<div class="w-screen h-screen flex justify-center items-center">
+<div class="w-screen h-dvh flex justify-center items-center">
   <div class="w-full h-full flex flex-col justify-end items-center md:h-auto md:w-2xl md:flex-row md:items-stretch md:bg-white md:rounded-xl md:p-2 md:pb-0 text-gray-700 md:shadow-xl">
 
     <div class="w-full flex flex-col rounded-t-[3rem] md:rounded-none md:w-1/2 md:p-8 bg-white h-4/6 md:h-auto">

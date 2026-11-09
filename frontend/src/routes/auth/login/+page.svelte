@@ -54,7 +54,7 @@
   });
 </script>
 
-<div class="w-screen h-screen flex justify-center items-center flex-col">
+<div class="w-screen h-dvh flex justify-center items-center flex-col">
   {#if isAccountCreated}
     <div class="fixed inset-x-0 top-6 z-50 flex justify-center pointer-events-none">
       <div
