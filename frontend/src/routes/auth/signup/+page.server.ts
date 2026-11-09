@@ -1,13 +1,13 @@
 import { API_BASE_URL } from "$app/env/private";
 import { fail, redirect } from "@sveltejs/kit";
-import type { Actions } from "./$types";
+import type { Actions, PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ cookies }) => {
   const token = cookies.get("session");
   if (token) {
     return redirect(303, "/home");
   }
-}
+};
 
 export const actions = {
   default: async ({ request }) => {
@@ -18,7 +18,12 @@ export const actions = {
     const confirmPassword = data.get("confirmPassword")?.toString();
 
     if (!username || !email || !password) {
-      return fail(400, { missing: true, message: "All fields need to be filled out", username, email });
+      return fail(400, {
+        missing: true,
+        message: "All fields need to be filled out",
+        username,
+        email,
+      });
     }
 
     if (password !== confirmPassword) {
@@ -34,12 +39,16 @@ export const actions = {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        return fail(res.status, { message: errData.message || "Registration failed", username, email});
+        return fail(res.status, {
+          message: errData.message || "Registration failed",
+          username,
+          email,
+        });
       }
     } catch (err) {
       return fail(500, { message: "Registration failed", username, email });
     }
 
     redirect(303, "/auth/login");
-  }
+  },
 } satisfies Actions;

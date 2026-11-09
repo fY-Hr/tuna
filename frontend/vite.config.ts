@@ -29,7 +29,7 @@ export default defineConfig({
     }),
   ]),
   ssr: {
-    noExternal: ["@lucide/svelte"]
+    noExternal: ["@lucide/svelte"],
   },
   test: {
     expect: { requireAssertions: true },

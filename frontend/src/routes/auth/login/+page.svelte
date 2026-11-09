@@ -4,7 +4,7 @@
   import { enhance } from "$app/forms";
   import { refreshAll, goto } from "$app/navigation";
   import type { PageProps } from "./$types";
-	import type { SubmitFunction } from "$sveltejs/kit";
+	import type { SubmitFunction } from "@sveltejs/kit";
   import { page } from "$app/state";
   import { fly, fade } from "svelte/transition";
   import CircleCheck from "@lucide/svelte/icons/circle-check";
@@ -23,7 +23,7 @@
 
     return async({ result, update }) =>{
       if(result.type === "redirect") {
-        goto(result.location, { state: {accountCreated: true}})
+        goto(result.location);
       } else {
         status = "idle";
         await update();
@@ -31,13 +31,15 @@
     }
   }
 
+	// this toast logic is a bit messy, because i can just use session storage from the browser
+	// but for the sake of learning something new wkwkwk.
   $effect(() => {
     if (page.state.accountCreated) {
       isAccountCreated = true;
       const timeout = setTimeout(() => {
         isAccountCreated = false;
+				goto(page.url, {state: {...page.state, accountCreated: false}, replaceState: true, shallow: true});
       },4000);
-      page.state.accountCreated = false;
       return () => clearTimeout(timeout);
     }
   });
