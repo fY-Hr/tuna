@@ -1,6 +1,13 @@
 import { API_BASE_URL } from "$app/env/private";
 import { fail, redirect } from "@sveltejs/kit";
-import type { Actions } from "./$types";
+import type { Actions, PageServerLoad } from "./$types";
+
+export const load: PageServerLoad = async ({ cookies }) => {
+  const token = cookies.get("session");
+  if (token) {
+    return redirect(303, "/home");
+  }
+}
 
 export const actions = {
   default: async ({ request, cookies }) => {
@@ -9,7 +16,7 @@ export const actions = {
     const password = data.get("password")?.toString();
 
     if (!username || !password) {
-      return fail(400, { missing: true, message: "Username and password required", username });
+      return fail(400, { missing: true, message: "All fields need to be filled out", username });
     }
 
     try {
