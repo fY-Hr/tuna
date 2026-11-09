@@ -46,7 +46,7 @@ export const actions = {
         });
       }
     } catch (err) {
-      return fail(500, { message: "Registration failed", username, email });
+      return fail(500, { message: "Registration failed", error: err, username, email});
     }
 
     redirect(303, "/auth/login");
