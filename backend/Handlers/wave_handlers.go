@@ -18,7 +18,7 @@ func (s *Server) GetWavesByIDHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
+		writeError(w, "Invalid wave ID", http.StatusBadRequest)
 		return
 	}
 
@@ -28,10 +28,10 @@ func (s *Server) GetWavesByIDHandler(w http.ResponseWriter, r *http.Request) {
 	err = s.db.QueryRow(query, waveID).Scan(&wave.ID, &wave.Content, &wave.CreatedAt, &wave.IsArchive)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "Wave not found", http.StatusNotFound)
+			writeError(w, "Wave not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -47,7 +47,7 @@ func (s *Server) GetWavesHandler(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.db.Query(query)
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -58,14 +58,14 @@ func (s *Server) GetWavesHandler(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&a.ID, &a.Content, &a.CreatedAt, &a.IsArchive)
 		if err != nil {
 			fmt.Println("Database error: ", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			writeError(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 		waves = append(waves, a)
 	}
 	if err := rows.Err(); err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -86,11 +86,11 @@ func (s *Server) CreateWavesHandler(w http.ResponseWriter, r *http.Request) {
 	var newWave Wave
 	err := json.NewDecoder(r.Body).Decode(&newWave)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 	if strings.TrimSpace(newWave.Content) == "" {
-		http.Error(w, "Wave content cant be empty", http.StatusBadRequest)
+		writeError(w, "Wave content cant be empty", http.StatusBadRequest)
 		return
 	}
 	newWave.Content = strings.TrimSpace(newWave.Content)
@@ -104,7 +104,7 @@ func (s *Server) CreateWavesHandler(w http.ResponseWriter, r *http.Request) {
 	err = s.db.QueryRow(query, userID, newWave.Content).Scan(&newWave.ID, &newWave.CreatedAt, &newWave.IsArchive)
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Failed to save wave", http.StatusInternalServerError)
+		writeError(w, "Failed to save wave", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -116,7 +116,7 @@ func (s *Server) DeleteWaveHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
+		writeError(w, "Invalid wave ID", http.StatusBadRequest)
 		return
 	}
 	userID := r.Context().Value(userIDKey).(int64)
@@ -124,18 +124,18 @@ func (s *Server) DeleteWaveHandler(w http.ResponseWriter, r *http.Request) {
 	query := `DELETE FROM waves WHERE id = $1 AND user_id = $2;`
 	res, err := s.db.Exec(query, waveID, userID)
 	if err != nil {
-		http.Error(w, "Failed to delete wave", http.StatusInternalServerError)
+		writeError(w, "Failed to delete wave", http.StatusInternalServerError)
 		return
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	if rowsAffected == 0 {
-		http.Error(w, "Wave not found or unauthorized", http.StatusNotFound)
+		writeError(w, "Wave not found or unauthorized", http.StatusNotFound)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -145,7 +145,7 @@ func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
+		writeError(w, "Invalid wave ID", http.StatusBadRequest)
 		return
 	}
 	userID := r.Context().Value(userIDKey).(int64)
@@ -153,11 +153,11 @@ func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 	var req Reaction
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 	if req.Value != 1 && req.Value != -1 && req.Value != 0 {
-		http.Error(w, "Value must either be 1, -1, or 0", http.StatusBadRequest)
+		writeError(w, "Value must either be 1, -1, or 0", http.StatusBadRequest)
 		return
 	}
 
@@ -165,11 +165,11 @@ func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 	waveExists, err := s.waveExists(waveID)
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	if !waveExists {
-		http.Error(w, "Wave not found", http.StatusNotFound)
+		writeError(w, "Wave not found", http.StatusNotFound)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 		_, err = s.db.Exec(query, userID, waveID, req.Value)
 	}
 	if err != nil {
-		http.Error(w, "Failed to react wave", http.StatusInternalServerError)
+		writeError(w, "Failed to react wave", http.StatusInternalServerError)
 		return
 	}
 
@@ -203,18 +203,18 @@ func (s *Server) GetWaveReactionsHandler(w http.ResponseWriter, r *http.Request)
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
+		writeError(w, "Invalid wave ID", http.StatusBadRequest)
 		return
 	}
 
 	waveExists, err := s.waveExists(waveID)
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	if !waveExists {
-		http.Error(w, "Wave not found", http.StatusNotFound)
+		writeError(w, "Wave not found", http.StatusNotFound)
 		return
 	}
 
@@ -226,7 +226,7 @@ func (s *Server) GetWaveReactionsHandler(w http.ResponseWriter, r *http.Request)
 	err = s.db.QueryRow(query, waveID).Scan(&counts.Up, &counts.Down)
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (s *Server) GetMyReactionHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
+		writeError(w, "Invalid wave ID", http.StatusBadRequest)
 		return
 	}
 	userID := r.Context().Value(userIDKey).(int64)
@@ -255,7 +255,7 @@ func (s *Server) GetMyReactionHandler(w http.ResponseWriter, r *http.Request) {
 			my.Value = 0
 		} else {
 			fmt.Println("Database error: ", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			writeError(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -269,23 +269,23 @@ func (s *Server) ArchiveWaveHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid wave id", http.StatusBadRequest)
+		writeError(w, "Invalid wave id", http.StatusBadRequest)
 		return
 	}
 	userID := r.Context().Value(userIDKey).(int64)
 	query := `UPDATE waves SET is_archive = true, updated_at = NOW() WHERE id = $1 AND user_id = $2;`
 	res, err := s.db.Exec(query, waveID, userID)
 	if err != nil {
-		http.Error(w, "Invalid user", http.StatusInternalServerError)
+		writeError(w, "Invalid user", http.StatusInternalServerError)
 		return
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		http.Error(w, "Invalid request", http.StatusInternalServerError)
+		writeError(w, "Invalid request", http.StatusInternalServerError)
 		return
 	}
 	if rowsAffected == 0 {
-		http.Error(w, "Wave not found or unauthorized", http.StatusNotFound)
+		writeError(w, "Wave not found or unauthorized", http.StatusNotFound)
 		return
 	}
 

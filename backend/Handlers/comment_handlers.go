@@ -14,14 +14,14 @@ func (s *Server) CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
+		writeError(w, "Invalid wave ID", http.StatusBadRequest)
 		return
 	}
 	userID := r.Context().Value(userIDKey).(int64)
 	var newComment CreateCommentRequest
 	err = json.NewDecoder(r.Body).Decode(&newComment)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 	if strings.TrimSpace(newComment.Content) == "" {
@@ -33,11 +33,11 @@ func (s *Server) CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	waveExists, err := s.waveExists(waveID)
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	if !waveExists {
-		http.Error(w, "Wave not found", http.StatusNotFound)
+		writeError(w, "Wave not found", http.StatusNotFound)
 		return
 	}
 
@@ -53,7 +53,7 @@ func (s *Server) CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	err = s.db.QueryRow(insertQuery, userID, waveID, newComment.Content).Scan(&comment.ID, &comment.CreatedAt, &comment.UpdatedAt)
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -66,18 +66,18 @@ func (s *Server) GetCommentsByWaveHandler(w http.ResponseWriter, r *http.Request
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid wave ID", http.StatusBadRequest)
+		writeError(w, "Invalid wave ID", http.StatusBadRequest)
 		return
 	}
 
 	waveExists, err := s.waveExists(waveID)
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	if !waveExists {
-		http.Error(w, "Wave not found", http.StatusNotFound)
+		writeError(w, "Wave not found", http.StatusNotFound)
 		return
 	}
 
@@ -91,7 +91,7 @@ ORDER BY c.created_at ASC;`
 	rows, err := s.db.Query(query, waveID)
 	if err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -101,14 +101,14 @@ ORDER BY c.created_at ASC;`
 		err = rows.Scan(&a.ID, &a.UserID, &a.WaveID, &a.Content, &a.CreatedAt, &a.Username, &a.AvatarURL)
 		if err != nil {
 			fmt.Println("Database error: ", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			writeError(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 		comments = append(comments, a)
 	}
 	if err := rows.Err(); err != nil {
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -19,7 +19,7 @@ func (s *Server) AuthMiddleware(next http.Handler) http.Handler {
 		// 1. Read Authorization header
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			writeError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
@@ -29,20 +29,20 @@ func (s *Server) AuthMiddleware(next http.Handler) http.Handler {
 			return s.jwtSecret, nil
 		})
 		if err != nil || !token.Valid {
-			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			writeError(w, "Invalid or expired token", http.StatusUnauthorized)
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			writeError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		// 3. Extract userID
 		uidFloat, ok := claims["user_id"].(float64)
 		if !ok {
-			http.Error(w, "UserID not found", http.StatusUnauthorized)
+			writeError(w, "UserID not found", http.StatusUnauthorized)
 			return // without this, the request continues after the 401!
 		}
 		userID := int64(uidFloat) // JSON numbers decode as float64; handlers expect int64

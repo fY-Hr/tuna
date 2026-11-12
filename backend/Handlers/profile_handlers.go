@@ -34,11 +34,11 @@ func (s *Server) GetMeHandler(w http.ResponseWriter, r *http.Request) {
 		Scan(&me.ID, &me.Username, &me.Email, &me.Bio, &me.AvatarURL, &me.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "User not found", http.StatusNotFound)
+			writeError(w, "User not found", http.StatusNotFound)
 			return
 		}
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -58,21 +58,21 @@ func (s *Server) UpdateMeHandler(w http.ResponseWriter, r *http.Request) {
 	var req UpdateProfileRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 	if req.Bio == nil && req.AvatarURL == nil {
-		http.Error(w, "Nothing to update", http.StatusBadRequest)
+		writeError(w, "Nothing to update", http.StatusBadRequest)
 		return
 	}
 	// Count runes, not bytes: "characters" in the message means
 	// characters, and a byte check would reject CJK bios at ~1/3 length.
 	if req.Bio != nil && utf8.RuneCountInString(*req.Bio) > maxBioLen {
-		http.Error(w, fmt.Sprintf("Bio must be at most %d characters", maxBioLen), http.StatusBadRequest)
+		writeError(w, fmt.Sprintf("Bio must be at most %d characters", maxBioLen), http.StatusBadRequest)
 		return
 	}
 	if req.AvatarURL != nil && utf8.RuneCountInString(*req.AvatarURL) > maxAvatarURLLen {
-		http.Error(w, fmt.Sprintf("Avatar URL must be at most %d characters", maxAvatarURLLen), http.StatusBadRequest)
+		writeError(w, fmt.Sprintf("Avatar URL must be at most %d characters", maxAvatarURLLen), http.StatusBadRequest)
 		return
 	}
 
@@ -103,11 +103,11 @@ func (s *Server) UpdateMeHandler(w http.ResponseWriter, r *http.Request) {
 		// account still yields valid tokens; zero rows here means the
 		// user is gone, not that the server is broken.
 		if err == sql.ErrNoRows {
-			http.Error(w, "User not found", http.StatusNotFound)
+			writeError(w, "User not found", http.StatusNotFound)
 			return
 		}
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Failed to update profile", http.StatusInternalServerError)
+		writeError(w, "Failed to update profile", http.StatusInternalServerError)
 		return
 	}
 
@@ -121,7 +121,7 @@ func (s *Server) UpdateMeHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 	if username == "" {
-		http.Error(w, "Username is required", http.StatusBadRequest)
+		writeError(w, "Username is required", http.StatusBadRequest)
 		return
 	}
 
@@ -132,11 +132,11 @@ func (s *Server) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 		Scan(&p.ID, &p.Username, &p.Bio, &p.AvatarURL, &p.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "User not found", http.StatusNotFound)
+			writeError(w, "User not found", http.StatusNotFound)
 			return
 		}
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 

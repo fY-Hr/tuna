@@ -87,30 +87,30 @@ func (s *Server) issueTokenPair(userID int64) (accessToken, refreshToken string,
 
 func (s *Server) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req RegisterRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid body request", http.StatusBadRequest)
+		writeError(w, "Invalid body request", http.StatusBadRequest)
 		return
 	}
 
 	if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.Password) == "" || strings.TrimSpace(req.Email) == "" {
-		http.Error(w, "Username, email, and password are required", http.StatusBadRequest)
+		writeError(w, "Username, email, and password are required", http.StatusBadRequest)
 		return
 	}
 
 	if reservedUsernames[strings.ToLower(req.Username)] {
-		http.Error(w, "That username is reserved", http.StatusConflict)
+		writeError(w, "That username is reserved", http.StatusConflict)
 		return
 	}
 
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "Failed to process password", http.StatusInternalServerError)
+		writeError(w, "Failed to process password", http.StatusInternalServerError)
 		return
 	}
 
@@ -127,11 +127,11 @@ func (s *Server) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		// everything else (DB down, etc.) is a server error, not 409.
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			http.Error(w, "Username or email already taken", http.StatusConflict)
+			writeError(w, "Username or email already taken", http.StatusConflict)
 			return
 		}
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Registration failed", http.StatusInternalServerError)
+		writeError(w, "Registration failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -156,17 +156,17 @@ type LoginRequest struct {
 
 func (s *Server) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	var req LoginRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid body request", http.StatusBadRequest)
+		writeError(w, "Invalid body request", http.StatusBadRequest)
 		return
 	}
 	if req.Username == "" || req.Password == "" {
-		http.Error(w, "Username and password are required", http.StatusBadRequest)
+		writeError(w, "Username and password are required", http.StatusBadRequest)
 		return
 	}
 	var newID int64
@@ -175,23 +175,23 @@ func (s *Server) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	err = s.db.QueryRow(query, req.Username).Scan(&newID, &storedHash)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "Failed to find user", http.StatusUnauthorized)
+			writeError(w, "Failed to find user", http.StatusUnauthorized)
 			return
 		}
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeError(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.Password))
 	if err != nil {
-		http.Error(w, "", http.StatusUnauthorized)
+		writeError(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
 	accessToken, refreshToken, err := s.issueTokenPair(newID)
 	if err != nil {
 		fmt.Println("Failed to issue token pair: ", err)
-		http.Error(w, "Login failed", http.StatusInternalServerError)
+		writeError(w, "Login failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -219,14 +219,14 @@ type RefreshRequest struct {
 // every refresh token for that user is revoked.
 func (s *Server) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req RefreshRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil || req.RefreshToken == "" {
-		http.Error(w, "Invalid body request", http.StatusBadRequest)
+		writeError(w, "Invalid body request", http.StatusBadRequest)
 		return
 	}
 
@@ -237,7 +237,7 @@ func (s *Server) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	// can never be consumed twice, even under concurrent refreshes.
 	tx, err := s.db.Begin()
 	if err != nil {
-		http.Error(w, "Refresh failed", http.StatusInternalServerError)
+		writeError(w, "Refresh failed", http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
@@ -250,11 +250,11 @@ func (s *Server) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	err = tx.QueryRow(query, tokenHash).Scan(&userID, &usedAt, &expiresAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
+			writeError(w, "Invalid refresh token", http.StatusUnauthorized)
 			return
 		}
 		fmt.Println("Database error: ", err)
-		http.Error(w, "Refresh failed", http.StatusInternalServerError)
+		writeError(w, "Refresh failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -262,27 +262,27 @@ func (s *Server) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	// compromise and revoke every refresh token for that user.
 	if usedAt.Valid {
 		if _, err := tx.Exec(`delete from refresh_tokens where user_id = $1;`, userID); err != nil {
-			http.Error(w, "Refresh failed", http.StatusInternalServerError)
+			writeError(w, "Refresh failed", http.StatusInternalServerError)
 			return
 		}
 		if err := tx.Commit(); err != nil {
-			http.Error(w, "Refresh failed", http.StatusInternalServerError)
+			writeError(w, "Refresh failed", http.StatusInternalServerError)
 			return
 		}
-		http.Error(w, "Refresh token reuse detected; all sessions revoked", http.StatusUnauthorized)
+		writeError(w, "Refresh token reuse detected; all sessions revoked", http.StatusUnauthorized)
 		return
 	}
 
 	if time.Now().After(expiresAt) {
 		if _, err := tx.Exec(`delete from refresh_tokens where token_hash = $1;`, tokenHash); err != nil {
-			http.Error(w, "Refresh failed", http.StatusInternalServerError)
+			writeError(w, "Refresh failed", http.StatusInternalServerError)
 			return
 		}
 		if err := tx.Commit(); err != nil {
-			http.Error(w, "Refresh failed", http.StatusInternalServerError)
+			writeError(w, "Refresh failed", http.StatusInternalServerError)
 			return
 		}
-		http.Error(w, "Refresh token expired", http.StatusUnauthorized)
+		writeError(w, "Refresh token expired", http.StatusUnauthorized)
 		return
 	}
 
@@ -291,24 +291,24 @@ func (s *Server) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	// the old token stays valid and the client can simply retry, with
 	// no lockout and no false reuse alarm.
 	if _, err := tx.Exec(`update refresh_tokens set used_at = now() where token_hash = $1;`, tokenHash); err != nil {
-		http.Error(w, "Refresh failed", http.StatusInternalServerError)
+		writeError(w, "Refresh failed", http.StatusInternalServerError)
 		return
 	}
 	newRefreshToken, err := newRefreshToken(tx, userID)
 	if err != nil {
 		fmt.Println("Failed to issue refresh token: ", err)
-		http.Error(w, "Refresh failed", http.StatusInternalServerError)
+		writeError(w, "Refresh failed", http.StatusInternalServerError)
 		return
 	}
 	newAccessToken, err := mintAccessToken(s.jwtSecret, userID)
 	if err != nil {
 		fmt.Println("Failed to issue access token: ", err)
-		http.Error(w, "Refresh failed", http.StatusInternalServerError)
+		writeError(w, "Refresh failed", http.StatusInternalServerError)
 		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		http.Error(w, "Refresh failed", http.StatusInternalServerError)
+		writeError(w, "Refresh failed", http.StatusInternalServerError)
 		return
 	}
 
