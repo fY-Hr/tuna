@@ -4,7 +4,7 @@
   import { enhance } from "$app/forms";
   import { refreshAll } from "$app/navigation";
   import type { PageProps } from "./$types";
-  import type { SubmitFunction } from "@sveltejs/kit";
+  import type { SubmitFunction } from "$app/forms";
   import Loader from "@lucide/svelte/icons/loader";
   import { goto } from "$app/navigation";
 
