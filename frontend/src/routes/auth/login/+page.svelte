@@ -4,7 +4,7 @@
   import { enhance } from "$app/forms";
   import { refreshAll, goto } from "$app/navigation";
   import type { PageProps } from "./$types";
-	import type { SubmitFunction } from "@sveltejs/kit";
+	import type { SubmitFunction } from "$app/forms";
   import { page } from "$app/state";
   import { fly, fade } from "svelte/transition";
   import CircleCheck from "@lucide/svelte/icons/circle-check";
@@ -17,6 +17,8 @@
 	let status: "idle" | "loading" = $state("idle");
 
   let isAccountCreated: boolean = $state(false);
+
+	const targetUrl = new URL(page.url.href);
 
   const handleSubmit: SubmitFunction = () => {
     status = "loading";
@@ -38,7 +40,7 @@
       isAccountCreated = true;
       const timeout = setTimeout(() => {
         isAccountCreated = false;
-				goto(page.url, {state: {...page.state, accountCreated: false}, replaceState: true, shallow: true});
+				goto(targetUrl, {state: {...page.state, accountCreated: false}, replaceState: true, shallow: true});
       },4000);
       return () => clearTimeout(timeout);
     }
