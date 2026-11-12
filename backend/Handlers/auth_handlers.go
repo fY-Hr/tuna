@@ -98,7 +98,7 @@ func (s *Server) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Username == "" || req.Password == "" || req.Email == "" {
+	if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.Password) == "" || strings.TrimSpace(req.Email) == "" {
 		http.Error(w, "Username, email, and password are required", http.StatusBadRequest)
 		return
 	}
@@ -165,12 +165,21 @@ func (s *Server) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid body request", http.StatusBadRequest)
 		return
 	}
+	if req.Username == "" || req.Password == "" {
+		http.Error(w, "Username and password are required", http.StatusBadRequest)
+		return
+	}
 	var newID int64
 	var storedHash []byte
 	query := `select id, password_hash from users where username = $1`
 	err = s.db.QueryRow(query, req.Username).Scan(&newID, &storedHash)
 	if err != nil {
-		http.Error(w, "Failed to find user", http.StatusUnauthorized)
+		if err == sql.ErrNoRows {
+			http.Error(w, "Failed to find user", http.StatusUnauthorized)
+			return
+		}
+		fmt.Println("Database error: ", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.Password))
@@ -240,7 +249,12 @@ func (s *Server) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	    where token_hash = $1 for update;`
 	err = tx.QueryRow(query, tokenHash).Scan(&userID, &usedAt, &expiresAt)
 	if err != nil {
-		http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
+			return
+		}
+		fmt.Println("Database error: ", err)
+		http.Error(w, "Refresh failed", http.StatusInternalServerError)
 		return
 	}
 

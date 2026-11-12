@@ -12,7 +12,6 @@ import (
 )
 
 import (
-	//gorm
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -26,12 +25,10 @@ func main() {
 	dsnString := os.Getenv("DATABASE_URL")
 	if dsnString == "" {
 		log.Fatal("ERROR, Please provide DATABASE_URL environment variable")
-		return
 	}
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Fatal("ERROR, Please provide JWT_SECRET environment variable")
-		return
 	}
 	db, err := sql.Open("pgx", dsnString)
 	if err != nil {

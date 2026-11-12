@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
-	// gorm
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func (s *Server) GetWavesByIDHandler(w http.ResponseWriter, r *http.Request) {
 	var wave Wave
-	var userID int64
 
 	idStr := chi.URLParam(r, "id")
 	waveID, err := strconv.ParseInt(idStr, 10, 64)
@@ -23,10 +22,10 @@ func (s *Server) GetWavesByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := ` select id, user_id, content, created_at, is_archive
+	query := ` select id, content, created_at, is_archive
 	 				from waves where id = $1`
 
-	err = s.db.QueryRow(query, waveID).Scan(&wave.ID, &userID, &wave.Content, &wave.CreatedAt, &wave.IsArchive)
+	err = s.db.QueryRow(query, waveID).Scan(&wave.ID, &wave.Content, &wave.CreatedAt, &wave.IsArchive)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Wave not found", http.StatusNotFound)
@@ -47,7 +46,8 @@ func (s *Server) GetWavesHandler(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := s.db.Query(query)
 	if err != nil {
-		http.Error(w, "Failed", http.StatusInternalServerError)
+		fmt.Println("Database error: ", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -57,15 +57,29 @@ func (s *Server) GetWavesHandler(w http.ResponseWriter, r *http.Request) {
 		var a Wave
 		err := rows.Scan(&a.ID, &a.Content, &a.CreatedAt, &a.IsArchive)
 		if err != nil {
-			http.Error(w, "Failed", http.StatusInternalServerError)
+			fmt.Println("Database error: ", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 		waves = append(waves, a)
+	}
+	if err := rows.Err(); err != nil {
+		fmt.Println("Database error: ", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(waves)
+}
+
+// waveExists checks whether a wave with this id exists, so handlers
+// can share one existence lookup instead of repeating the query.
+func (s *Server) waveExists(waveID int64) (bool, error) {
+	var exists bool
+	err := s.db.QueryRow(`select exists(select 1 from waves where id = $1)`, waveID).Scan(&exists)
+	return exists, err
 }
 
 func (s *Server) CreateWavesHandler(w http.ResponseWriter, r *http.Request) {
@@ -75,6 +89,11 @@ func (s *Server) CreateWavesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	if strings.TrimSpace(newWave.Content) == "" {
+		http.Error(w, "Wave content cant be empty", http.StatusBadRequest)
+		return
+	}
+	newWave.Content = strings.TrimSpace(newWave.Content)
 
 	userID := r.Context().Value(userIDKey).(int64)
 
@@ -84,7 +103,7 @@ func (s *Server) CreateWavesHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = s.db.QueryRow(query, userID, newWave.Content).Scan(&newWave.ID, &newWave.CreatedAt, &newWave.IsArchive)
 	if err != nil {
-		fmt.Println("Database Error: ", err)
+		fmt.Println("Database error: ", err)
 		http.Error(w, "Failed to save wave", http.StatusInternalServerError)
 		return
 	}
@@ -110,7 +129,8 @@ func (s *Server) DeleteWaveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		fmt.Println("Database error: ", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -142,10 +162,9 @@ func (s *Server) ReactWaveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verify the wave exists before upserting, so FK violations don't become 500s
-	var waveExists bool
-	err = s.db.QueryRow(`select exists(select 1 from waves where id = $1)`, waveID).Scan(&waveExists)
+	waveExists, err := s.waveExists(waveID)
 	if err != nil {
-		fmt.Println("Database Error: ", err)
+		fmt.Println("Database error: ", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -188,8 +207,7 @@ func (s *Server) GetWaveReactionsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var waveExists bool
-	err = s.db.QueryRow(`select exists(select 1 from waves where id = $1)`, waveID).Scan(&waveExists)
+	waveExists, err := s.waveExists(waveID)
 	if err != nil {
 		fmt.Println("Database error: ", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

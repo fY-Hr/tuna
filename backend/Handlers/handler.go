@@ -1,6 +1,10 @@
 package Handlers
 
-import "database/sql"
+import (
+	"database/sql"
+	"encoding/json"
+	"net/http"
+)
 
 type Server struct {
 	db        *sql.DB
@@ -12,4 +16,12 @@ func NewServer(db *sql.DB, jwtSecret []byte) *Server {
 		db:        db,
 		jwtSecret: jwtSecret,
 	}
+}
+
+func writeError(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": message,
+	})
 }

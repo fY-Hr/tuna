@@ -35,6 +35,7 @@ func setupRoutes(s *Handlers.Server) http.Handler {
 		r.Patch("/api/users/me", s.UpdateMeHandler)
 		r.Patch("/api/waves/{id}/archive", s.ArchiveWaveHandler)
 		r.Post("/api/waves/{id}/comments", s.CreateCommentHandler)
+		r.Delete("/api/comments/{id}", s.DeleteCommentHandler)
 	})
 	return r
 }
