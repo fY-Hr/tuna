@@ -30,11 +30,41 @@ create table if not exists waves(
     updated_at timestamptz default now() not null
 );
 
+create table if not exists refresh_tokens (
+    id bigint generated always as identity primary key,
+    user_id bigint not null references users(id) on delete cascade,
+    token_hash text unique not null,
+    expires_at timestamptz not null,
+    used_at timestamptz,
+    created_at timestamptz default now() not null
+);
+
+-- Session-revocation deletes by user_id and login lists a user's
+-- tokens; without this index those become full table scans.
+create index if not exists idx_refresh_tokens_user_id
+    on refresh_tokens(user_id);
+
 create table if not exists wave_reactions(
     user_id bigint not null references users(id) on delete cascade,
-    wave_id bigint not null references wave(id) on delete cascade,
+    wave_id bigint not null references waves(id) on delete cascade,
     value smallint not null check (value IN(1, -1)),
     created_at timestamptz default now() not null,
     updated_at timestamptz default now() not null,
     primary key (user_id, wave_id)
 );
+
+create table if not exists comments(
+	id bigint generated always as identity primary key,
+	user_id bigint not null references users(id) on delete cascade,
+	wave_id bigint not null references waves(id) on delete cascade,
+	content text not null,
+	created_at timestamptz default now() not null,
+    updated_at timestamptz default now() not null
+);
+
+create index if not exists idx_comments_wave_id on comments(wave_id);
+
+
+-- sorting the table by wave_id would be really intensive 
+-- so index is very much needed
+
