@@ -7,14 +7,16 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/fY-Hr/tuna/backend/Handlers"
 	"github.com/joho/godotenv"
+)
 
-	//gorm
+import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
-	_ = godotenv.Load()
+	_ = godotenv.Overload()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -23,12 +25,10 @@ func main() {
 	dsnString := os.Getenv("DATABASE_URL")
 	if dsnString == "" {
 		log.Fatal("ERROR, Please provide DATABASE_URL environment variable")
-		return
 	}
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Fatal("ERROR, Please provide JWT_SECRET environment variable")
-		return
 	}
 	db, err := sql.Open("pgx", dsnString)
 	if err != nil {
@@ -42,11 +42,11 @@ func main() {
 	}
 	fmt.Println("Connected successfully")
 
-	server := &Server{db: db, jwtSecret: []byte(jwtSecret)}
+	server := Handlers.NewServer(db, []byte(jwtSecret))
 	defer db.Close()
 
 	fmt.Println("Tuna server starting")
-	if err := http.ListenAndServe(":"+port, server.routes()); err != nil {
+	if err := http.ListenAndServe(":"+port, setupRoutes(server)); err != nil {
 		log.Fatal(err)
 	}
 }
