@@ -1,13 +1,7 @@
 import { API_BASE_URL } from "$app/env/private";
 import { fail, redirect } from "@sveltejs/kit";
-import type { Actions, PageServerLoad } from "./$types";
-
-export const load: PageServerLoad = async ({ cookies }) => {
-  const token = cookies.get("session");
-  if (token) {
-    return redirect(303, "/home");
-  }
-};
+import type { Actions } from "./$types";
+import { dev } from "$app/env";
 
 export const actions = {
   default: async ({ request, cookies }) => {
@@ -31,15 +25,13 @@ export const actions = {
         return fail(res.status, { message: errData.message || "Login failed", username });
       }
 
-      const { token } = await res.json();
+			const body = await res.json().catch(() => null);
+			const accessToken: string | undefined = body?.access_token;
+			if(!accessToken) return fail(502, { message: "Invalid response from API", username });
 
-      cookies.set("session", token, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-        secure: true,
-        maxAge: 60 * 60 * 24 * 7,
-      });
+      cookies.set("session", accessToken, { path: "/", httpOnly: true, sameSite: "lax", secure: !dev, maxAge: body.expires_in});
+			cookies.set("refresh", body.refresh_token, { path: "/", httpOnly: true, sameSite: "lax", secure: !dev, maxAge: 60 * 60 * 24 * 7})
+
     } catch (err) {
       return fail(500, { message: "Could not connect to API service", error: err });
     }
